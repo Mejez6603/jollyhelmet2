@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- This meta tag is crucial for mobile devices to scale correctly -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jolly Helmet | Full System Dashboard</title>
+    <style>
+        /* --- UNIVERSAL RESET FOR RESPONSIVENESS --- */
+        * { box-sizing: border-box; }
+
+        /* --- MODERN MINIMALIST CSS --- */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; color: #333; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; width: 100%; overflow-x: hidden; }
+        h1 { color: #1a73e8; margin-bottom: 5px; text-align: center; }
+        .subtitle { color: #666; margin-bottom: 30px; font-size: 0.9em; text-align: center; }
+        
+        /* Responsive Grid: min(100%, 320px) allows it to shrink on very small phones without breaking */
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 20px; width: 100%; max-width: 900px; }
+        
+        /* Cards & Grouping */
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); width: 100%; }
+        .card h2 { margin-top: 0; font-size: 1.2em; border-bottom: 2px solid #f0f2f5; padding-bottom: 10px; color: #444; }
+        .board-section { margin-bottom: 25px; }
+        .board-title { font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 10px; }
+        
+        /* Sensors */
+        .sensor-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f9f9f9; width: 100%; }
+        .sensor-row:last-child { border-bottom: none; }
+        .sensor-label { font-weight: 500; font-size: 0.95em; flex: 1; padding-right: 10px; }
+        .sensor-value { font-weight: bold; padding: 4px 10px; border-radius: 6px; background: #e8eaed; font-size: 0.85em; transition: all 0.3s; white-space: nowrap; text-align: center; }
+        
+        /* Status Colors */
+        .status-good { background: #ceead6; color: #0d652d; }
+        .status-warn { background: #feefe3; color: #e52592; }
+        .status-alert { background: #fad2cf; color: #a50e0e; }
+        .status-vip { background: #fef7e0; color: #b06000; }
+        .status-admin { background: #e8eaed; color: #202124; }
+
+        /* Standard Buttons */
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; background: #1a73e8; color: white; cursor: pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s; white-space: nowrap; }
+        .btn:hover { background: #1557b0; }
+        .btn:active { transform: scale(0.95); }
+        .btn-danger { background: #ea4335; }
+        .btn-danger:hover { background: #d93025; }
+        .btn-dark { background: #444; }
+        .btn-dark:hover { background: #222; }
+
+        /* --- TOGGLE SWITCH (Humidifier) --- */
+        .switch { position: relative; display: inline-block; width: 46px; height: 24px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #1a73e8; }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        /* --- TERMINAL CSS --- */
+        .terminal-card { grid-column: 1 / -1; } /* Make terminal span full width */
+        .terminal-box {
+            background-color: #1e1e1e; color: #4af626; font-family: 'Courier New', Courier, monospace;
+            padding: 15px; height: 250px; overflow-y: auto; overflow-x: hidden; border-radius: 8px;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.8); font-size: 0.9em; line-height: 1.5; margin-bottom: 15px; width: 100%; word-wrap: break-word;
+        }
+        .terminal-entry { margin-bottom: 4px; border-bottom: 1px dashed #333; padding-bottom: 4px; }
+        .log-time { color: #888; margin-right: 10px; font-size: 0.85em; }
+
+        /* ========================================== */
+        /* MOBILE RESPONSIVE ADJUSTMENTS              */
+        /* ========================================== */
+        @media screen and (max-width: 600px) {
+            body { padding: 10px; }
+            h1 { font-size: 1.6em; }
+            .dashboard-grid { gap: 15px; }
+            .card { padding: 15px; }
+            .card h2 { font-size: 1.1em; }
+            .sensor-label { font-size: 0.9em; }
+            .sensor-value { font-size: 0.8em; padding: 4px 8px; }
+            .btn { padding: 8px 12px; font-size: 0.85em; }
+            .terminal-box { height: 200px; font-size: 0.8em; padding: 10px; }
+        }
+        
+        @media screen and (max-width: 350px) {
+            /* For extremely small phones (like iPhone SE) */
+            .sensor-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .sensor-label { padding-right: 0; }
+            .sensor-value, .btn { align-self: stretch; text-align: center; }
+            .switch { align-self: flex-start; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Jolly Helmet</h1>
+    <div class="subtitle">Full System Web Monitor</div>
+
+    <div class="dashboard-grid">
+        
+        <!-- SENSORS COLUMN -->
+        <div class="card">
+            <h2>Live Sensors</h2>
+            
+            <div class="board-section">
+                <div class="board-title">ESP32 A (Hardware)</div>
+                <div class="sensor-row"><span class="sensor-label">RFID Scanned (V1)</span><span class="sensor-value" id="s-V1">Loading...</span></div>
+                <div class="sensor-row"><span class="sensor-label">Coin Slot (V2)</span><span class="sensor-value" id="s-V2">Loading...</span></div>
+                <div class="sensor-row"><span class="sensor-label">Helmet Detection (V3)</span><span class="sensor-value" id="s-V3">Loading...</span></div>
+                <div class="sensor-row"><span class="sensor-label">Alcohol Level A (V4)</span><span class="sensor-value" id="s-V4">Loading...</span></div>
+            </div>
+
+            <div class="board-section">
+                <div class="board-title">ESP32 B (Doors & UI)</div>
+                <div class="sensor-row"><span class="sensor-label">Joystick Pos (V11)</span><span class="sensor-value" id="s-V11">Loading...</span></div>
+                <div class="sensor-row"><span class="sensor-label">Panel Door (V12)</span><span class="sensor-value" id="s-V12">Loading...</span></div>
+                <div class="sensor-row"><span class="sensor-label">Enclosure Door (V14)</span><span class="sensor-value" id="s-V14">Loading...</span></div>
+                <div class="sensor-row"><span class="sensor-label">Backdoor (V16)</span><span class="sensor-value" id="s-V16">Loading...</span></div>
+            </div>
+
+            <div class="board-section">
+                <div class="board-title">ESP32 D (Pumps & Alc)</div>
+                <div class="sensor-row"><span class="sensor-label">Alcohol Level C (V31)</span><span class="sensor-value" id="s-V31">Loading...</span></div>
+                <div class="sensor-row"><span class="sensor-label">Alcohol Level D (V32)</span><span class="sensor-value" id="s-V32">Loading...</span></div>
+            </div>
+        </div>
+
+        <!-- CONTROLS COLUMN -->
+        <div class="card">
+            <h2>Manual Overrides</h2>
+            
+            <div class="board-section">
+                <div class="board-title">ESP32 A Controls</div>
+                <div class="sensor-row">
+                    <span class="sensor-label">Humidifier (V9)</span>
+                    <label class="switch"><input type="checkbox" id="c-v9" onchange="togglePin('V9', this)"><span class="slider"></span></label>
+                </div>
+                <div class="sensor-row"><span class="sensor-label">Buzzer Test (V5)</span><button class="btn" onclick="sendCommand('V5', 1)">BEEP</button></div>
+                <div class="sensor-row"><span class="sensor-label">Servo A - Refund (V7)</span><button class="btn btn-danger" onclick="sendCommand('V7', 1)">TRIGGER</button></div>
+                <div class="sensor-row"><span class="sensor-label">Servo B - Accept (V8)</span><button class="btn btn-danger" onclick="sendCommand('V8', 1)">TRIGGER</button></div>
+            </div>
+
+            <div class="board-section">
+                <div class="board-title">ESP32 B Controls</div>
+                <div class="sensor-row"><span class="sensor-label">Panel Lock (V13)</span><button class="btn btn-danger" onclick="sendCommand('V13', 0)">UNLOCK</button></div>
+                <div class="sensor-row"><span class="sensor-label">Enclosure Lock (V15)</span><button class="btn btn-danger" onclick="sendCommand('V15', 0)">UNLOCK</button></div>
+                <div class="sensor-row"><span class="sensor-label">Backdoor Lock (V17)</span><button class="btn btn-danger" onclick="sendCommand('V17', 0)">UNLOCK</button></div>
+            </div>
+
+            <div class="board-section">
+                <div class="board-title">ESP32 D Controls</div>
+                <div class="sensor-row"><span class="sensor-label">Water Pump C (V33)</span><button class="btn" onclick="sendCommand('V33', 1)">PULSE</button></div>
+                <div class="sensor-row"><span class="sensor-label">Water Pump D (V34)</span><button class="btn" onclick="sendCommand('V34', 1)">PULSE</button></div>
+                <div class="sensor-row"><span class="sensor-label">LED C Cycle (V35)</span><button class="btn" onclick="sendCommand('V35', 1)">CYCLE</button></div>
+                <div class="sensor-row"><span class="sensor-label">LED D Cycle (V36)</span><button class="btn" onclick="sendCommand('V36', 1)">CYCLE</button></div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- SYSTEM TERMINAL LOGGER                     -->
+        <!-- ========================================== -->
+        <div class="card terminal-card">
+            <h2>System Event Log (V0)</h2>
+            <div class="terminal-box" id="terminal">
+                <div class="terminal-entry"><span class="log-time">[SYSTEM]</span> Connecting to Secure Cloud Node...</div>
+            </div>
+            <button class="btn btn-dark" onclick="clearTerminal()">Clear Log</button>
+        </div>
+
+    </div>
+
+    <!-- JAVASCRIPT FOR BLYNK API INTERACTION -->
+    <script>
+        const AUTH_TOKEN = "ch5XE0zq36-eR0h25fOEIJGyP0b-6qws";
+        const BLYNK_URL = "https://blynk.cloud/external/api";
+
+        // Write to Blynk (Buttons & Toggles)
+        function sendCommand(vPin, value) {
+            fetch(`${BLYNK_URL}/update?token=${AUTH_TOKEN}&${vPin}=${value}`)
+                .then(() => console.log(`Sent ${value} to ${vPin}`))
+                .catch(err => console.error("Error writing:", err));
+        }
+
+        // Toggle Switch Handler
+        function togglePin(vPin, checkbox) {
+            sendCommand(vPin, checkbox.checked ? 1 : 0);
+        }
+
+        // Helper to update text and colors
+        function updateTextUI(elementId, value, goodValues, badValues) {
+            let el = document.getElementById(elementId);
+            if (!el) return;
+            
+            el.innerText = value;
+            el.className = "sensor-value"; // Reset classes
+            
+            if (goodValues.includes(value)) el.classList.add("status-good");
+            else if (badValues.includes(value)) el.classList.add("status-alert");
+            else if (value === "TRUE" || value === "OPEN") el.classList.add("status-warn");
+            else if (value === "FALSE" || value === "CLOSED") el.classList.add("status-good");
+            else if (value === "VIP") el.classList.add("status-vip");
+            else if (value === "MASTER") el.classList.add("status-admin");
+        }
+
+        // --- TERMINAL LOGIC ---
+        let lastLog = "";
+        function appendTerminalLog(logText) {
+            // Ignore empty strings, errors, or duplicate back-to-back logs
+            if (!logText || logText === "-" || logText === lastLog) return;
+            lastLog = logText;
+
+            let term = document.getElementById('terminal');
+            let timeStr = new Date().toLocaleTimeString();
+            
+            // Clean up the string formatting (Blynk sometimes sends \n as literal characters)
+            let cleanStr = logText.replace(/\\n/g, '').trim();
+
+            let entry = document.createElement('div');
+            entry.className = "terminal-entry";
+            entry.innerHTML = `<span class="log-time">[${timeStr}]</span> ${cleanStr}`;
+            
+            term.appendChild(entry);
+            term.scrollTop = term.scrollHeight; // Auto-scroll to bottom
+        }
+
+        function clearTerminal() {
+            document.getElementById('terminal').innerHTML = '<div class="terminal-entry"><span class="log-time">[SYSTEM]</span> Log cleared by user.</div>';
+            lastLog = ""; // Reset memory
+        }
+
+        // Master Polling Loop
+        async function pollBlynk() {
+            // Added V0 (Terminal) to the top of the fetch list
+            const pinsToFetch = ['V0','V1','V2','V3','V4','V11','V12','V14','V16','V31','V32','V9'];
+            let sensorData = {};
+
+            for (let pin of pinsToFetch) {
+                try {
+                    let res = await fetch(`${BLYNK_URL}/get?token=${AUTH_TOKEN}&${pin}`);
+                    let txt = await res.text();
+                    sensorData[pin] = txt.replace(/\[|\]|"/g, '').trim(); 
+                } catch (e) {
+                    sensorData[pin] = "-";
+                }
+                await new Promise(resolve => setTimeout(resolve, 50)); 
+            }
+
+            // Update UI
+            updateTextUI('s-V1', sensorData.V1, [], ["INVALID"]);
+            updateTextUI('s-V2', "P " + sensorData.V2 + ".00", [], []);
+            updateTextUI('s-V3', sensorData.V3 === "TRUE" ? "YES" : "NO", ["YES"], ["NO"]);
+            updateTextUI('s-V4', sensorData.V4, ["Empty", "Low"], ["High"]);
+            
+            updateTextUI('s-V11', sensorData.V11, [], []);
+            updateTextUI('s-V12', sensorData.V12 === "TRUE" ? "OPEN" : "CLOSED", ["CLOSED"], ["OPEN"]);
+            updateTextUI('s-V14', sensorData.V14 === "TRUE" ? "OPEN" : "CLOSED", ["CLOSED"], ["OPEN"]);
+            updateTextUI('s-V16', sensorData.V16 === "TRUE" ? "OPEN" : "CLOSED", ["CLOSED"], ["OPEN"]);
+            
+            updateTextUI('s-V31', sensorData.V31, ["Empty", "Low"], ["High"]);
+            updateTextUI('s-V32', sensorData.V32, ["Empty", "Low"], ["High"]);
+
+            // Send V0 data to the custom Terminal logic
+            appendTerminalLog(sensorData.V0);
+
+            // Sync the Humidifier Toggle Switch
+            let humCheckbox = document.getElementById('c-v9');
+            if (humCheckbox && document.activeElement !== humCheckbox) {
+                humCheckbox.checked = (sensorData.V9 === "1" || sensorData.V9 === "TRUE");
+            }
+
+            setTimeout(pollBlynk, 1500);
+        }
+
+        pollBlynk();
+    </script>
+</body>
+</html>
